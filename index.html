@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แรงและการเคลื่อนที่ 3D บนลานหิมะ (ม.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#09131f;--panel:rgba(13,27,46,.72);--line:rgba(190,222,255,.16);--ice:#e8f5ff;--mute:#9db7d0;--aurora:#5eead4;--lamp:#ffb454;--blue:#60a5fa;--red:#f87171;--green:#34d399;--violet:#c4b5fd}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Kanit',system-ui,sans-serif;background:radial-gradient(1200px 700px at 20% -10%,#17365c 0,transparent 60%),var(--bg);color:var(--ice);overflow-x:hidden}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--aurora);outline-offset:2px}
+.app{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr);gap:16px;padding:16px;height:100vh}
+.stage{position:relative;border-radius:26px;overflow:hidden;border:1px solid var(--line);background:#0e2038;box-shadow:0 24px 60px rgba(0,0,0,.45);min-height:420px}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#view:active{cursor:grabbing}
+.glass{background:var(--panel);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.28)}
+.hud{position:absolute;top:14px;left:14px;display:flex;gap:8px;flex-wrap:wrap;z-index:3}
+.stat{border-radius:16px;padding:8px 14px;min-width:96px}
+.stat small{display:block;font-size:11px;color:var(--mute);font-weight:300}
+.stat b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat b i{font-style:normal;font-size:12px;color:var(--mute);font-weight:400;margin-left:3px}
+.hint{position:absolute;top:14px;right:14px;z-index:3;border-radius:999px;padding:7px 14px;font-size:12px;color:var(--mute);max-width:46%}
+.dock{position:absolute;right:14px;bottom:14px;z-index:3;display:flex;gap:8px;border-radius:20px;padding:8px}
+.dock button{width:50px;height:50px;border-radius:14px;font-size:18px;background:rgba(255,255,255,.07);transition:transform .15s,background .2s}
+.dock button:hover{background:rgba(255,255,255,.16)}
+.dock button:active{transform:scale(.92)}
+.dock #bPlay{background:linear-gradient(135deg,#14b8a6,#0ea5e9)}
+.dock svg{width:20px;height:20px;fill:currentColor}
+.hs{position:absolute;z-index:2;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;pointer-events:auto;white-space:nowrap}
+.hs .dot{width:22px;height:22px;border-radius:50%;background:var(--c);border:3px solid rgba(255,255,255,.9);box-shadow:0 0 0 0 var(--c);animation:pulse 2s infinite}
+.hs span{font-size:12px;font-weight:500;padding:3px 10px;border-radius:999px;background:rgba(7,16,30,.78);border:1px solid var(--line)}
+.hs:hover .dot,.hs.on .dot{transform:scale(1.25)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--c)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.card{position:absolute;left:14px;bottom:14px;z-index:4;width:min(340px,calc(100% - 28px));border-radius:22px;padding:16px 18px 18px;border-top:3px solid var(--c);display:none}
+.card.show{display:block;animation:pop .38s cubic-bezier(.2,1.2,.3,1)}
+@keyframes pop{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+.card h4{font-size:16px;font-weight:600;margin-bottom:6px;padding-right:28px}
+.card p{font-size:13px;line-height:1.6;color:#cfe3f6;font-weight:300}
+.card .eq{margin-top:10px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;color:var(--c);font-weight:500}
+.card .x{position:absolute;top:10px;right:12px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.1);font-size:14px}
+.side{display:flex;flex-direction:column;min-height:0;border-radius:26px;overflow:hidden}
+.side header{padding:20px 22px 12px}
+.side h1{font-size:23px;font-weight:700;letter-spacing:.2px;line-height:1.25}
+.side h1 em{font-style:normal;color:var(--aurora)}
+.side header p{font-size:13px;color:var(--mute);margin-top:4px;font-weight:300}
+.tabs{display:flex;gap:6px;padding:0 22px 12px}
+.tabs button{flex:1;padding:9px 6px;border-radius:12px;font-size:14px;font-weight:500;color:var(--mute);background:rgba(255,255,255,.05);transition:.2s}
+.tabs button.on{background:linear-gradient(135deg,rgba(94,234,212,.28),rgba(96,165,250,.24));color:#fff;box-shadow:inset 0 0 0 1px rgba(94,234,212,.45)}
+.pane{display:none;flex:1;min-height:0;overflow-y:auto;padding:4px 22px 22px}
+.pane.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.pane::-webkit-scrollbar{width:6px}
+.pane::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px}
+.fm{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.fm div{border-radius:16px;padding:14px;background:rgba(255,255,255,.05);border-left:3px solid var(--c)}
+.fm b{display:block;font-size:17px;font-weight:600;color:var(--c);margin-bottom:4px}
+.fm small{font-size:12px;line-height:1.5;color:var(--mute);font-weight:300}
+.note{border-radius:16px;padding:14px 16px;font-size:13px;line-height:1.7;background:rgba(94,234,212,.09);border:1px solid rgba(94,234,212,.25);color:#d6fff7;font-weight:300}
+.note b{font-weight:600}
+.ctl{margin-bottom:16px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;margin-bottom:6px}
+.ctl .row b{font-size:18px;font-weight:600;color:var(--c);font-variant-numeric:tabular-nums}
+.ctl .row b i{font-style:normal;font-size:12px;color:var(--mute);margin-left:3px;font-weight:400}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,.14);outline-offset:6px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--c);border:3px solid #fff;cursor:pointer}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chips button{font-size:12px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);transition:.2s}
+.chips button:hover,.chips button.on{background:rgba(94,234,212,.2);border-color:rgba(94,234,212,.6)}
+.lbl{font-size:12px;color:var(--mute);margin:4px 0 0;font-weight:300}
+.calc{border-radius:18px;padding:14px 16px;background:rgba(3,10,20,.55);border:1px solid var(--line);font-size:13px;line-height:1.6;margin:6px 0 14px}
+.calc .h{display:flex;justify-content:space-between;font-size:12px;color:var(--aurora);margin-bottom:6px}
+.calc div.s{color:var(--mute);font-weight:300;margin-top:6px}
+.calc div.v{font-weight:500;font-size:14px;font-variant-numeric:tabular-nums}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gr canvas{width:100%;height:150px;border-radius:14px;background:rgba(3,10,20,.5);border:1px solid var(--line)}
+.q{border-radius:18px;padding:16px;background:rgba(255,255,255,.05);margin-bottom:12px}
+.q p{font-size:14px;line-height:1.6;margin-bottom:10px;font-weight:400}
+.q p em{font-style:normal;font-size:12px;background:var(--blue);color:#06101e;padding:2px 9px;border-radius:8px;margin-right:8px;font-weight:600}
+.q label{display:block;padding:9px 12px;margin-top:6px;border-radius:12px;font-size:13px;background:rgba(255,255,255,.06);border:1px solid transparent;cursor:pointer;transition:.2s}
+.q label:hover{background:rgba(96,165,250,.16)}
+.q label:has(input:checked){border-color:var(--aurora);background:rgba(94,234,212,.14)}
+.q input{accent-color:#5eead4;margin-right:8px}
+.fb{display:none;margin-top:10px;padding:11px 13px;border-radius:12px;font-size:12.5px;line-height:1.65;font-weight:300}
+.fb.ok{display:block;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.5);animation:fade .4s}
+.fb.no{display:block;background:rgba(248,113,113,.13);border:1px solid rgba(248,113,113,.5);animation:fade .4s}
+.fb b{font-weight:600}
+.btn{display:block;width:100%;padding:13px;border-radius:14px;font-size:15px;font-weight:600;background:linear-gradient(135deg,#14b8a6,#3b82f6);color:#fff;margin-top:6px;transition:transform .15s}
+.btn:active{transform:scale(.98)}
+.score{display:none;text-align:center;border-radius:18px;padding:14px;margin-bottom:12px;background:rgba(255,180,84,.14);border:1px solid rgba(255,180,84,.5);font-size:15px}
+.score b{font-size:28px;color:var(--lamp);margin:0 4px}
+@media(max-width:980px){
+.app{grid-template-columns:1fr;height:auto}
+.stage{height:62vh;min-height:380px}
+.side{min-height:640px}
+.hint{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<section class="stage" id="stage">
+<canvas id="view" aria-label="ฉาก 3D ลานหิมะ หมุน แพน และซูมได้"></canvas>
+<div class="hud">
+<div class="glass stat"><small>เวลา t</small><b id="hT">0.0<i>s</i></b></div>
+<div class="glass stat"><small>ความเร็ว v</small><b id="hV">0.0<i>m/s</i></b></div>
+<div class="glass stat"><small>ระยะทาง s</small><b id="hS">0.0<i>m</i></b></div>
+</div>
+<div class="glass hint">ลากเพื่อหมุน · ลากขวาเพื่อแพน · เลื่อนล้อเพื่อซูม · คลิกจุดเรืองแสง</div>
+<div class="glass card" id="card"></div>
+<div class="glass dock">
+<button id="bPlay" title="เล่น" aria-label="เล่น"><svg viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg></button>
+<button id="bPause" title="หยุด" aria-label="หยุด"><svg viewBox="0 0 24 24"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z"/></svg></button>
+<button id="bReset" title="รีเซ็ต" aria-label="รีเซ็ต"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 7.75 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.36 2.36A7.96 7.96 0 0 0 12 4z"/></svg></button>
+</div>
+</section>
+
+<aside class="glass side">
+<header>
+<h1>แรงและการเคลื่อนที่ <em>บนลานหิมะ</em></h1>
+<p>วิทยาศาสตร์ ม.2 — กฎการเคลื่อนที่ข้อที่ 2 ของนิวตัน</p>
+</header>
+<nav class="tabs" role="tablist">
+<button class="on" data-tab="learn" role="tab">สรุปสูตร</button>
+<button data-tab="lab" role="tab">ห้องทดลอง</button>
+<button data-tab="quiz" role="tab">แบบทดสอบ</button>
+</nav>
+
+<div class="pane on" id="learn">
+<div class="fm">
+<div style="--c:#60a5fa"><b>F = ma</b><small>แรงลัพธ์ = มวล × ความเร่ง<br>F (N), m (kg), a (m/s²)</small></div>
+<div style="--c:#34d399"><b>a = (F − f) / m</b><small>ความเร่งสุทธิ เมื่อคิดแรงเสียดทาน f</small></div>
+<div style="--c:#ffb454"><b>v = u + at</b><small>ความเร็ว ณ เวลา t (u = ความเร็วต้น)</small></div>
+<div style="--c:#c4b5fd"><b>s = ut + ½at²</b><small>ระยะทางที่เคลื่อนที่ได้ในเวลา t</small></div>
+</div>
+<div class="note"><b>ลองทำตามนี้:</b><br>1. หมุนกล้องดูเลื่อนจากหลายมุม แล้วคลิกจุดเรืองแสงเพื่ออ่านคำอธิบาย<br>2. ไปแท็บ “ห้องทดลอง” ปรับแรง มวล และชนิดของพื้นหิมะ<br>3. กดปุ่มเล่นที่มุมขวาล่างของฉาก แล้วดูความเร็วและกราฟเปลี่ยนไป</div>
+</div>
+
+<div class="pane" id="lab">
+<div class="ctl" style="--c:#60a5fa"><div class="row"><label for="iF">แรงลาก F</label><b><span id="vF">50</span><i>N</i></b></div><input type="range" id="iF" min="0" max="100" value="50" step="1"></div>
+<div class="ctl" style="--c:#c4b5fd"><div class="row"><label for="iM">มวลของเลื่อน m</label><b><span id="vM">10</span><i>kg</i></b></div><input type="range" id="iM" min="1" max="50" value="10" step="1"></div>
+<div class="ctl" style="--c:#f87171"><div class="row"><label for="iX">แรงเสียดทาน f</label><b><span id="vX">0</span><i>N</i></b></div><input type="range" id="iX" min="0" max="40" value="0" step="1">
+<div class="chips" id="surf"><button data-f="0">พื้นลื่นไร้แรงเสียดทาน</button><button data-f="3">น้ำแข็ง</button><button data-f="12">หิมะแน่น</button><button data-f="30">หิมะลึก</button></div></div>
+<div class="ctl" style="--c:#5eead4"><div class="row"><span>ความหนักของหิมะที่ตก</span></div>
+<div class="chips" id="snowc"><button data-n="0">ไม่ตก</button><button data-n="1">เบา</button><button data-n="2" class="on">ปานกลาง</button><button data-n="3">หนัก</button></div></div>
+<div class="calc">
+<div class="h"><span>ขั้นตอนการคำนวณสด</span><span id="cSt">พร้อมทำงาน</span></div>
+<div class="s">1. แรงสุทธิ</div><div class="v" style="color:#fde68a">F<sub>net</sub> = F − f = <span id="c1"></span></div>
+<div class="s">2. ความเร่ง</div><div class="v" style="color:#67e8f9">a = F<sub>net</sub> / m = <span id="c2"></span></div>
+<div class="s">3. ความเร็ว</div><div class="v" style="color:#6ee7b7">v = u + at = <span id="c3"></span></div>
+<div class="s">4. ระยะทาง</div><div class="v" style="color:#f9a8d4">s = ½at² = <span id="c4"></span></div>
+</div>
+<div class="gr"><canvas id="gV"></canvas><canvas id="gS"></canvas></div>
+</div>
+
+<div class="pane" id="quiz">
+<div class="score" id="score">คะแนนที่ได้ <b id="scN">0</b> / 3</div>
+<div id="qs"></div>
+<button class="btn" id="qSend">ส่งคำตอบและตรวจเฉลย</button>
+<button class="btn" id="qAgain" style="display:none;background:rgba(255,255,255,.12)">ทำแบบทดสอบใหม่</button>
+</div>
+</aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const S={F:50,m:10,f:0,a:5,t:0,v:0,s:0,run:false,hist:[],last:0};
+const VIS=0.5;
+
+const stage=$('stage'),cv=$('view');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.outputEncoding=THREE.sRGBEncoding;
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0x24415f,16,62);
+const camera=new THREE.PerspectiveCamera(45,1,0.1,300);
+camera.position.set(6.5,3.6,9);
+const controls=new THREE.OrbitControls(camera,cv);
+controls.target.set(0,0.9,0);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.minDistance=3.5;
+controls.maxDistance=24;
+controls.maxPolarAngle=1.48;
+controls.screenSpacePanning=true;
+controls.update();
+
+function gradTex(w,h,stops,vertical){
+const c=document.createElement('canvas');c.width=w;c.height=h;
+const x=c.getContext('2d');
+const g=vertical?x.createLinearGradient(0,0,0,h):x.createLinearGradient(0,0,w,0);
+stops.forEach(s=>g.addColorStop(s[0],s[1]));
+x.fillStyle=g;x.fillRect(0,0,w,h);
+return new THREE.CanvasTexture(c);
+}
+const skyTex=gradTex(8,512,[[0,'#040914'],[0.45,'#0c1c35'],[0.8,'#21456b'],[1,'#3c6a92']],true);
+skyTex.encoding=THREE.sRGBEncoding;
+scene.background=skyTex;
+
+scene.add(new THREE.HemisphereLight(0xbcd8ff,0x1b2c47,0.75));
+const moon=new THREE.DirectionalLight(0xcfe3ff,1.25);
+moon.position.set(-9,15,11);
+moon.castShadow=true;
+moon.shadow.mapSize.set(2048,2048);
+moon.shadow.camera.left=-16;moon.shadow.camera.right=16;
+moon.shadow.camera.top=14;moon.shadow.camera.bottom=-14;
+moon.shadow.camera.near=1;moon.shadow.camera.far=60;
+moon.shadow.bias=-0.0004;
+scene.add(moon);
+
+const moonBall=new THREE.Mesh(new THREE.SphereGeometry(3,32,32),new THREE.MeshBasicMaterial({color:0xf3f9ff,fog:false}));
+moonBall.position.set(-34,30,-60);
+scene.add(moonBall);
+
+const starGeo=new THREE.BufferGeometry();
+const sp=new Float32Array(900);
+for(let i=0;i<300;i++){
+const th=Math.random()*Math.PI*2,ph=Math.random()*1.25+0.15,r=120;
+sp[i*3]=r*Math.sin(ph)*Math.cos(th);
+sp[i*3+1]=r*Math.cos(ph)*0.9+8;
+sp[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+}
+starGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));
+scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:1.6,sizeAttenuation:false,fog:false,transparent:true,opacity:0.85})));
+
+const auroraMat=new THREE.MeshBasicMaterial({map:gradTex(256,64,[[0,'rgba(0,0,0,0)'],[0.25,'rgba(94,234,212,.55)'],[0.55,'rgba(96,165,250,.45)'],[0.8,'rgba(196,181,253,.4)'],[1,'rgba(0,0,0,0)']],false),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false,opacity:0.5});
+const aurora=new THREE.Mesh(new THREE.PlaneGeometry(130,22,1,1),auroraMat);
+aurora.position.set(0,26,-70);
+scene.add(aurora);
+
+function snowTex(){
+const c=document.createElement('canvas');c.width=c.height=512;
+const x=c.getContext('2d');
+x.fillStyle='#e8f2ff';x.fillRect(0,0,512,512);
+for(let i=0;i<2200;i++){
+x.fillStyle=Math.random()<0.5?'rgba(168,196,230,.28)':'rgba(255,255,255,.7)';
+x.beginPath();x.arc(Math.random()*512,Math.random()*512,Math.random()*3+0.6,0,7);x.fill();
+}
+const t=new THREE.CanvasTexture(c);
+t.wrapS=t.wrapT=THREE.RepeatWrapping;
+t.anisotropy=8;
+t.encoding=THREE.sRGBEncoding;
+return t;
+}
+const groundTex=snowTex();
+groundTex.repeat.set(10,6);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,60),new THREE.MeshStandardMaterial({map:groundTex,roughness:0.92,metalness:0}));
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+function trackTex(){
+const c=document.createElement('canvas');c.width=256;c.height=128;
+const x=c.getContext('2d');
+x.fillStyle='#cfe0f3';x.fillRect(0,0,256,128);
+for(let i=0;i<900;i++){
+x.fillStyle='rgba(120,150,190,.22)';
+x.fillRect(Math.random()*256,Math.random()*128,Math.random()*5+1,1);
+}
+x.fillStyle='rgba(100,135,180,.55)';
+x.fillRect(0,0,4,128);
+x.fillStyle='rgba(120,150,190,.35)';
+x.fillRect(0,34,256,3);x.fillRect(0,91,256,3);
+const t=new THREE.CanvasTexture(c);
+t.wrapS=t.wrapT=THREE.RepeatWrapping;
+t.repeat.set(20,1);
+t.anisotropy=8;
+t.encoding=THREE.sRGBEncoding;
+return t;
+}
+const trackT=trackTex();
+const track=new THREE.Mesh(new THREE.PlaneGeometry(100,3.2),new THREE.MeshStandardMaterial({map:trackT,roughness:0.55,metalness:0.05}));
+track.rotation.x=-Math.PI/2;
+track.position.y=0.02;
+track.receiveShadow=true;
+scene.add(track);
+
+const scroll=[];
+const trunkM=new THREE.MeshStandardMaterial({color:0x4a3626,roughness:1});
+const leafM=new THREE.MeshStandardMaterial({color:0x1d4a45,roughness:0.9});
+const capM=new THREE.MeshStandardMaterial({color:0xf4f9ff,roughness:0.95});
+const trunkG=new THREE.CylinderGeometry(0.16,0.22,0.9,8);
+function makeTree(x,z,sc){
+const g=new THREE.Group();
+const tr=new THREE.Mesh(trunkG,trunkM);tr.position.y=0.45;tr.castShadow=true;g.add(tr);
+for(let i=0;i<3;i++){
+const r=1.25-i*0.3,h=1.5-i*0.15,y=1.2+i*0.85;
+const lf=new THREE.Mesh(new THREE.ConeGeometry(r,h,9),leafM);lf.position.y=y;lf.castShadow=true;g.add(lf);
+const cp=new THREE.Mesh(new THREE.ConeGeometry(r*0.86,h*0.62,9),capM);cp.position.y=y+h*0.22;g.add(cp);
+}
+g.position.set(x,0,z);g.scale.setScalar(sc);
+scene.add(g);scroll.push(g);
+}
+for(let i=0;i<20;i++){
+makeTree(-40+i*4+Math.random()*2,-(5+Math.random()*7),0.9+Math.random()*0.8);
+makeTree(-40+i*4+Math.random()*2,5+Math.random()*7,0.9+Math.random()*0.8);
+}
+const poleM=new THREE.MeshStandardMaterial({color:0xd9344a,roughness:0.6});
+const signM=new THREE.MeshStandardMaterial({color:0xfff7e0,roughness:0.6,emissive:0x2a2411});
+for(let i=0;i<16;i++){
+const g=new THREE.Group();
+const p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.5,8),poleM);p.position.y=0.75;p.castShadow=true;g.add(p);
+const s=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.28,0.04),signM);s.position.y=1.35;g.add(s);
+g.position.set(-40+i*5,0,-2.3);
+scene.add(g);scroll.push(g);
+}
+
+const sled=new THREE.Group();
+scene.add(sled);
+const woodM=new THREE.MeshStandardMaterial({color:0x9a5b2e,roughness:0.7});
+const crateM=new THREE.MeshStandardMaterial({color:0x3b82f6,roughness:0.45,metalness:0.1});
+const steelM=new THREE.MeshStandardMaterial({color:0xcfd8e3,roughness:0.25,metalness:0.85});
+const base=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),woodM);
+const crate=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),crateM);
+const rA=new THREE.Mesh(new THREE.BoxGeometry(1,0.08,0.08),steelM);
+const rB=new THREE.Mesh(new THREE.BoxGeometry(1,0.08,0.08),steelM);
+[base,crate,rA,rB].forEach(o=>{o.castShadow=true;o.receiveShadow=true;sled.add(o)});
+const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.1,16,16),new THREE.MeshBasicMaterial({color:0xffc56b}));
+sled.add(lamp);
+const lampL=new THREE.PointLight(0xffb454,1.1,9);
+sled.add(lampL);
+const dims={w:1.6,h:0.8,d:1.1,top:1.0,mid:0.5};
+
+function arrow(color){
+const a=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,color,0.4,0.28);
+a.line.material=new THREE.LineBasicMaterial({color});
+a.cone.material=new THREE.MeshBasicMaterial({color});
+scene.add(a);return a;
+}
+const aF=arrow(0x60a5fa),aX=arrow(0xf87171),aV=arrow(0x34d399);
+aX.setDirection(new THREE.Vector3(-1,0,0));
+function setArrow(a,o,len,p){
+if(len<0.05){a.visible=false;return}
+a.visible=true;a.position.copy(o);
+a.setLength(len,Math.min(0.45,len*0.55),Math.min(0.3,len*0.35));
+}
+
+const N=4200;
+const sPos=new Float32Array(N*3),sFall=new Float32Array(N),sSway=new Float32Array(N);
+for(let i=0;i<N;i++){
+sPos[i*3]=Math.random()*44-22;
+sPos[i*3+1]=Math.random()*14;
+sPos[i*3+2]=Math.random()*40-20;
+sFall[i]=0.8+Math.random()*1.6;
+sSway[i]=Math.random()*6.28;
+}
+const sGeo=new THREE.BufferGeometry();
+sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3));
+const flake=(()=>{
+const c=document.createElement('canvas');c.width=c.height=64;
+const x=c.getContext('2d');
+const g=x.createRadialGradient(32,32,0,32,32,32);
+g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.45,'rgba(255,255,255,.7)');g.addColorStop(1,'rgba(255,255,255,0)');
+x.fillStyle=g;x.fillRect(0,0,64,64);
+return new THREE.CanvasTexture(c);
+})();
+const snow=new THREE.Points(sGeo,new THREE.PointsMaterial({map:flake,size:0.17,transparent:true,depthWrite:false,opacity:0.95}));
+snow.frustumCulled=false;
+scene.add(snow);
+const snowLevels=[0,1200,2600,4200];
+sGeo.setDrawRange(0,snowLevels[2]);
+
+const HS={
+sled:{c:'#ffb454',name:'เลื่อนหิมะ'},
+force:{c:'#60a5fa',name:'แรงลาก F'},
+fric:{c:'#f87171',name:'แรงเสียดทาน f'},
+vel:{c:'#34d399',name:'ความเร็ว v'}
+};
+const hsEls={};
+Object.keys(HS).forEach(k=>{
+const b=document.createElement('button');
+b.className='hs';b.style.setProperty('--c',HS[k].c);
+b.innerHTML='<i class="dot"></i><span>'+HS[k].name+'</span>';
+b.addEventListener('click',()=>showCard(k));
+stage.appendChild(b);hsEls[k]=b;
+});
+const hsPos={sled:new THREE.Vector3(),force:new THREE.Vector3(),fric:new THREE.Vector3(),vel:new THREE.Vector3()};
+
+const card=$('card');
+let cur=null;
+function cardHTML(k){
+const Fn=Math.max(S.F-S.f,0);
+const d={
+sled:['เลื่อนหิมะมวล m = '+S.m+' kg','มวลบอกว่าวัตถุ “ดื้อ” ต่อการเปลี่ยนการเคลื่อนที่มากแค่ไหน (ความเฉื่อย) ยิ่งมวลมาก ยิ่งต้องใช้แรงมากเพื่อให้เร็วขึ้น ลองเลื่อนแถบมวลแล้วดูขนาดเลื่อนที่เปลี่ยนไป','a = F<sub>net</sub> / m = '+S.a.toFixed(2)+' m/s²'],
+force:['แรงลาก F = '+S.F+' N','แรงที่ดึงเลื่อนไปข้างหน้า หน่วยเป็นนิวตัน (N) ลูกศรสีน้ำเงินยิ่งยาว แรงยิ่งมาก และความเร่งก็ยิ่งมากเมื่อมวลเท่าเดิม','F<sub>net</sub> = F − f = '+Fn.toFixed(1)+' N'],
+fric:['แรงเสียดทาน f = '+S.f+' N','พื้นหิมะต้านการเคลื่อนที่ในทิศตรงข้ามกับการเคลื่อนที่ น้ำแข็งลื่นมีแรงเสียดทานน้อย ส่วนหิมะลึกมีแรงเสียดทานมาก ลองเลือกชนิดพื้นในห้องทดลอง','a = (F − f) / m = ('+S.F+' − '+S.f+') / '+S.m],
+vel:['ความเร็ว v = '+S.v.toFixed(2)+' m/s','เมื่อมีแรงลัพธ์ เลื่อนจะมีความเร่ง ความเร็วจึงเพิ่มขึ้นเรื่อย ๆ ตามเวลา ลูกศรสีเขียวเหนือเลื่อนยาวขึ้นตามความเร็ว','v = u + at = 0 + '+S.a.toFixed(2)+' × '+S.t.toFixed(1)]
+}[k];
+return '<button class="x" aria-label="ปิด" onclick="hideCard()">✕</button><h4>'+d[0]+'</h4><p>'+d[1]+'</p><div class="eq">'+d[2]+'</div>';
+}
+function showCard(k){
+cur=k;
+card.style.setProperty('--c',HS[k].c);
+card.innerHTML=cardHTML(k);
+card.classList.remove('show');void card.offsetWidth;card.classList.add('show');
+Object.keys(hsEls).forEach(x=>hsEls[x].classList.toggle('on',x===k));
+}
+function hideCard(){
+cur=null;card.classList.remove('show');
+Object.keys(hsEls).forEach(x=>hsEls[x].classList.remove('on'));
+}
+function refreshCard(){if(cur){card.innerHTML=cardHTML(cur)}}
+
+function updateDims(){
+const w=1.4+S.m*0.02,h=0.5+S.m*0.012,d=1.0+S.m*0.012;
+const bh=0.22,rh=0.1;
+base.scale.set(w,bh,d);base.position.y=rh+bh/2;
+crate.scale.set(w*0.62,h,d*0.7);crate.position.set(-w*0.08,rh+bh+h/2,0);
+rA.scale.set(w*1.12,1,1);rA.position.set(0.04,rh*0.5,d*0.36);
+rB.scale.set(w*1.12,1,1);rB.position.set(0.04,rh*0.5,-d*0.36);
+lamp.position.set(w/2+0.02,rh+bh+0.12,0);
+lampL.position.copy(lamp.position);
+dims.w=w;dims.h=h;dims.d=d;dims.top=rh+bh+h;dims.mid=rh+bh+h*0.4;
+}
+
+function physics(){
+S.F=+$('iF').value;S.m=+$('iM').value;S.f=+$('iX').value;
+S.a=Math.max(S.F-S.f,0)/S.m;
+$('vF').textContent=S.F;$('vM').textContent=S.m;$('vX').textContent=S.f;
+document.querySelectorAll('#surf button').forEach(b=>b.classList.toggle('on',+b.dataset.f===S.f));
+updateDims();updCalc();refreshCard();drawGraphs();
+}
+function updCalc(){
+const Fn=Math.max(S.F-S.f,0);
+$('c1').textContent=S.F+' − '+S.f+' = '+Fn.toFixed(1)+' N';
+$('c2').textContent=Fn.toFixed(1)+' / '+S.m+' = '+S.a.toFixed(2)+' m/s²';
+$('c3').textContent='0 + ('+S.a.toFixed(2)+' × '+S.t.toFixed(1)+') = '+S.v.toFixed(2)+' m/s';
+$('c4').textContent='½ × '+S.a.toFixed(2)+' × ('+S.t.toFixed(1)+')² = '+(0.5*S.a*S.t*S.t).toFixed(2)+' m';
+$('hT').innerHTML=S.t.toFixed(1)+'<i>s</i>';
+$('hV').innerHTML=S.v.toFixed(1)+'<i>m/s</i>';
+$('hS').innerHTML=S.s.toFixed(1)+'<i>m</i>';
+}
+
+function graph(c,key,col,name){
+const w=c.clientWidth,h=c.clientHeight;
+if(!w||!h)return;
+const r=Math.min(window.devicePixelRatio||1,2);
+c.width=w*r;c.height=h*r;
+const x=c.getContext('2d');
+x.scale(r,r);
+const L=34,B=20,T=18,R=8;
+const H=S.hist;
+let tm=5,vm=1;
+for(let i=0;i<H.length;i++){if(H[i].t>tm)tm=H[i].t;if(H[i][key]>vm)vm=H[i][key]}
+tm=Math.ceil(tm/5)*5;vm*=1.15;
+x.strokeStyle='rgba(190,222,255,.14)';x.fillStyle='#9db7d0';x.font='10px Kanit';x.lineWidth=1;
+for(let i=0;i<=4;i++){
+const y=T+(h-T-B)*i/4;
+x.beginPath();x.moveTo(L,y);x.lineTo(w-R,y);x.stroke();
+x.textAlign='right';x.fillText((vm*(1-i/4)).toFixed(vm<10?1:0),L-4,y+3);
+}
+x.textAlign='center';
+for(let i=0;i<=4;i++){x.fillText((tm*i/4).toFixed(0),L+(w-L-R)*i/4,h-6)}
+x.textAlign='left';x.fillStyle=col;x.font='11px Kanit';x.fillText(name,L,11);
+if(H.length<2)return;
+x.beginPath();
+H.forEach((p,i)=>{
+const px=L+(w-L-R)*p.t/tm,py=T+(h-T-B)*(1-p[key]/vm);
+i?x.lineTo(px,py):x.moveTo(px,py);
+});
+x.strokeStyle=col;x.lineWidth=2;x.stroke();
+x.lineTo(L+(w-L-R)*H[H.length-1].t/tm,h-B);x.lineTo(L,h-B);x.closePath();
+x.fillStyle=col+'26';x.fill();
+}
+function drawGraphs(){
+graph($('gV'),'v','#34d399','v (m/s) — เวลา (s)');
+graph($('gS'),'s','#c4b5fd','s (m) — เวลา (s)');
+}
+
+function setRun(r){
+S.run=r;
+$('cSt').textContent=r?'กำลังคำนวณ...':(S.t>0?'หยุดชั่วคราว':'พร้อมทำงาน');
+$('cSt').style.color=r?'#5eead4':'#ffb454';
+}
+function reset(){
+S.run=false;S.t=0;S.v=0;S.s=0;S.hist=[];S.last=0;
+$('cSt').style.color='#5eead4';
+physics();setRun(false);
+}
+
+['iF','iM','iX'].forEach(id=>$(id).addEventListener('input',physics));
+$('surf').addEventListener('click',e=>{
+const b=e.target.closest('button');if(!b)return;
+$('iX').value=b.dataset.f;physics();
+});
+$('snowc').addEventListener('click',e=>{
+const b=e.target.closest('button');if(!b)return;
+document.querySelectorAll('#snowc button').forEach(x=>x.classList.toggle('on',x===b));
+sGeo.setDrawRange(0,snowLevels[+b.dataset.n]);
+});
+$('bPlay').addEventListener('click',()=>setRun(true));
+$('bPause').addEventListener('click',()=>setRun(false));
+$('bReset').addEventListener('click',reset);
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===b.dataset.tab));
+if(b.dataset.tab==='lab')requestAnimationFrame(drawGraphs);
+}));
+
+const QS=[
+{q:'หากออกแรงขนาด 60 นิวตัน ลากวัตถุมวล 12 กิโลกรัม บนพื้นเรียบไร้แรงเสียดทาน วัตถุนี้จะเคลื่อนที่ด้วยความเร่งเท่าใด?',o:['ก. 2 m/s²','ข. 5 m/s²','ค. 720 m/s²','ง. 0.2 m/s²'],a:1,e:'<b>วิธีคิด:</b> จาก F = ma จะได้ a = F / m<br>แทนค่า a = 60 / 12 = <b>5 m/s²</b>'},
+{q:'ต้องการเร่งรถทดลองมวล 5 กิโลกรัม ให้มีความเร่ง 4 m/s² บนพื้นที่มีแรงเสียดทาน 10 นิวตัน จะต้องออกแรงลาก (F) เท่าใด?',o:['ก. 10 นิวตัน','ข. 20 นิวตัน','ค. 30 นิวตัน','ง. 40 นิวตัน'],a:2,e:'<b>วิธีคิด:</b> F<sub>net</sub> = F − f = ma จะได้ F = ma + f<br>F = (5 × 4) + 10 = 20 + 10 = <b>30 นิวตัน</b>'},
+{q:'ถ้าเพิ่มมวลของวัตถุเป็น 2 เท่า ในขณะที่ออกแรงลากเท่าเดิม ความเร่งของวัตถุจะเป็นอย่างไร?',o:['ก. ความเร่งเพิ่มขึ้นเป็น 2 เท่า','ข. ความเร่งลดลงเหลือครึ่งหนึ่ง (1/2)','ค. ความเร่งเพิ่มขึ้นเป็น 4 เท่า','ง. ความเร่งเท่าเดิมไม่เปลี่ยนแปลง'],a:1,e:'<b>วิธีคิด:</b> a = F / m ความเร่งแปรผกผันกับมวล<br>เมื่อมวลเพิ่มเป็น 2 เท่า ความเร่งจะเหลือ <b>1/2 เท่าของเดิม</b>'}
+];
+function buildQuiz(){
+$('qs').innerHTML=QS.map((x,i)=>'<div class="q"><p><em>ข้อ '+(i+1)+'</em>'+x.q+'</p>'+x.o.map((o,j)=>'<label><input type="radio" name="q'+i+'" value="'+j+'">'+o+'</label>').join('')+'<div class="fb" id="fb'+i+'"></div></div>').join('');
+$('score').style.display='none';
+$('qSend').style.display='block';
+$('qAgain').style.display='none';
+}
+$('qSend').addEventListener('click',()=>{
+let sc=0;
+QS.forEach((x,i)=>{
+const s=document.querySelector('input[name="q'+i+'"]:checked');
+const f=$('fb'+i);
+const ok=s&&+s.value===x.a;
+if(ok)sc++;
+f.className='fb '+(ok?'ok':'no');
+f.innerHTML='<b>'+(ok?'ถูกต้อง!':(s?'ยังไม่ถูกต้อง':'ยังไม่ได้เลือกคำตอบ'))+'</b> คำตอบที่ถูกคือ '+x.o[x.a]+'<br>'+x.e;
+});
+$('scN').textContent=sc;
+$('score').style.display='block';
+$('qAgain').style.display='block';
+$('qSend').style.display='none';
+$('score').scrollIntoView({behavior:'smooth',block:'nearest'});
+});
+$('qAgain').addEventListener('click',buildQuiz);
+
+function resize(){
+const w=stage.clientWidth,h=stage.clientHeight;
+renderer.setSize(w,h,false);
+camera.aspect=w/h;
+camera.updateProjectionMatrix();
+drawGraphs();
+}
+new ResizeObserver(resize).observe(stage);
+window.addEventListener('resize',resize);
+
+const tmp=new THREE.Vector3();
+function placeHS(){
+const w=stage.clientWidth,h=stage.clientHeight;
+Object.keys(hsPos).forEach(k=>{
+tmp.copy(hsPos[k]).project(camera);
+const el=hsEls[k];
+if(tmp.z>1||tmp.z<-1){el.style.display='none';return}
+el.style.display='flex';
+el.style.left=((tmp.x+1)/2*w)+'px';
+el.style.top=((1-tmp.y)/2*h)+'px';
+});
+}
+
+const clock=new THREE.Clock();
+let tAcc=0;
+function frame(){
+requestAnimationFrame(frame);
+const dt=Math.min(clock.getDelta(),0.05);
+tAcc+=dt;
+let dx=0;
+if(S.run){
+S.a=Math.max(S.F-S.f,0)/S.m;
+S.t+=dt;S.v+=S.a*dt;S.s+=S.v*dt;
+dx=S.v*dt*VIS;
+if(S.t-S.last>=0.1){
+S.last=S.t;
+S.hist.push({t:S.t,v:S.v,s:S.s});
+if(S.hist.length>900)S.hist.shift();
+drawGraphs();
+}
+updCalc();
+if(cur==='vel')refreshCard();
+}
+if(dx>0){
+scroll.forEach(o=>{o.position.x-=dx;if(o.position.x<-40)o.position.x+=80});
+groundTex.offset.x+=dx/10;
+trackT.offset.x+=dx/5;
+}
+const tilt=Math.min(S.a*0.006,0.06)*(S.run?1:0);
+sled.rotation.z+=(tilt-sled.rotation.z)*0.1;
+sled.position.y=S.run&&S.v>0.5?Math.sin(tAcc*22)*0.008*Math.min(S.v,6):0;
+
+const ar=snow.geometry.attributes.position.array;
+const cnt=sGeo.drawRange.count;
+for(let i=0;i<cnt;i++){
+const k=i*3;
+ar[k+1]-=sFall[i]*dt;
+ar[k]+=Math.sin(tAcc*0.8+sSway[i])*0.25*dt-dx*1.0+0.18*dt;
+if(ar[k+1]<0){ar[k+1]=14;ar[k]=Math.random()*44-22}
+if(ar[k]<-22)ar[k]+=44;
+if(ar[k]>22)ar[k]-=44;
+}
+snow.geometry.attributes.position.needsUpdate=true;
+snow.position.x=camera.position.x*0.5;
+snow.position.z=camera.position.z*0.5;
+auroraMat.opacity=0.42+Math.sin(tAcc*0.5)*0.14;
+aurora.position.x=Math.sin(tAcc*0.1)*6;
+lampL.intensity=1.05+Math.sin(tAcc*9)*0.06;
+
+const Fl=Math.min(S.F*0.035,3.5),Xl=Math.min(S.f*0.06,2.4),Vl=Math.min(S.v*0.12,4);
+setArrow(aF,new THREE.Vector3(dims.w/2+0.08,dims.mid,0),Fl);
+setArrow(aX,new THREE.Vector3(-dims.w/2-0.08,dims.mid,0),Xl);
+setArrow(aV,new THREE.Vector3(-0.2,dims.top+0.75,0),Vl);
+hsPos.sled.set(0,dims.mid,dims.d*0.5+0.1);
+hsPos.force.set(dims.w/2+Math.max(Fl,0.3)+0.25,dims.mid,0);
+hsPos.fric.set(-dims.w/2-Math.max(Xl,0.3)-0.25,Math.max(dims.mid,0.5)*0.5,0);
+hsPos.vel.set(Math.max(Vl,0.3)-0.1,dims.top+0.75,0);
+
+controls.update();
+renderer.render(scene,camera);
+placeHS();
+}
+
+buildQuiz();
+resize();
+reset();
+frame();
+</script>
+</body>
+</html>
